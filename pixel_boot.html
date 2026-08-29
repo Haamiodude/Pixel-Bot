@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P.I.X.E.L. — BOOT SEQUENCE | Cockatoo Pixels</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --orange: #ff6a00;
+    --orange2: #ff9a3c;
+    --orange3: #ffb86c;
+    --teal:   #00d4c8;
+    --teal2:  #00a89e;
+    --white:  #f0ece4;
+    --dim:    rgba(255,106,0,0.08);
+    --border: rgba(255,106,0,0.2);
+    --bg:     #0a0500;
+    --bg2:    #120900;
+    --bg3:    #1a0d00;
+    --mono:   'Share Tech Mono', monospace;
+    --display:'Orbitron', sans-serif;
+    --body:   'Rajdhani', sans-serif;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--orange2);
+    font-family: var(--mono);
+    height: 100%;
+    overflow: hidden;
+    cursor: none;
+  }
+
+  /* CURSOR */
+  #cursor {
+    position: fixed; width: 18px; height: 18px;
+    border: 1px solid var(--orange);
+    border-radius: 0;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: width .12s, height .12s;
+  }
+  #cursor-dot {
+    position: fixed; width: 3px; height: 3px;
+    background: var(--orange);
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+  }
+
+  /* SCANLINES */
+  body::after {
+    content:''; position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      to bottom, transparent 0px, transparent 3px,
+      rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px
+    );
+    pointer-events:none; z-index:9000;
+  }
+
+  /* SCREEN */
+  #screen { position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* TOPBAR */
+  #topbar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 9px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,5,0,0.97);
+    flex-shrink:0;
+    opacity:0; animation: fadeIn 0.3s 0.2s forwards;
+  }
+  .topbar-brand {
+    font-family: var(--display);
+    font-size: 9px; font-weight:600; letter-spacing:5px;
+    color: var(--orange); opacity:0.8;
+  }
+  .topbar-pills { display:flex; gap:16px; align-items:center; }
+  .pill {
+    font-size:8px; letter-spacing:2px; padding:3px 10px;
+    border:1px solid; text-transform:uppercase;
+  }
+  .pill-o { border-color:rgba(255,106,0,0.4); color:var(--orange2); background:rgba(255,106,0,0.07); }
+  .pill-t { border-color:rgba(0,212,200,0.35); color:var(--teal);   background:rgba(0,212,200,0.06); }
+  .pill-w { border-color:rgba(255,184,0,0.4);  color:#ffb800;       background:rgba(255,184,0,0.06); }
+  #live-clock { font-size:11px; letter-spacing:2px; color:rgba(255,106,0,0.5); }
+
+  /* MAIN */
+  #main { flex:1; display:flex; overflow:hidden; }
+
+  /* SIDEBARS */
+  #sidebar-left {
+    width:190px; border-right:1px solid var(--border);
+    padding:14px 12px; display:flex; flex-direction:column; gap:14px;
+    flex-shrink:0; overflow:hidden;
+    opacity:0; transform:translateX(-20px);
+    animation: slideIn 0.5s 0.4s forwards;
+  }
+  #sidebar-right {
+    width:190px; border-left:1px solid var(--border);
+    padding:14px 12px; display:flex; flex-direction:column; gap:14px;
+    flex-shrink:0; overflow:hidden;
+    opacity:0; transform:translateX(20px);
+    animation: slideIn 0.5s 0.4s forwards;
+  }
+
+  .sb-label {
+    font-size:8px; letter-spacing:3px; color:rgba(255,106,0,0.3);
+    text-transform:uppercase; margin-bottom:5px;
+    border-bottom:1px solid rgba(255,106,0,0.1); padding-bottom:4px;
+  }
+  .sb-value { font-size:10px; color:rgba(255,154,60,0.7); line-height:1.9; }
+  .sb-value .hi   { color:var(--orange2); font-size:13px; }
+  .sb-value .ok   { color:var(--teal); }
+  .sb-value .warn { color:#ffb800; }
+  .sb-value .err  { color:#ff4444; }
+
+  .mini-bar { margin:3px 0; }
+  .mini-bar-label { display:flex; justify-content:space-between; font-size:8px; color:rgba(255,106,0,0.4); margin-bottom:2px; }
+  .mini-bar-track { height:3px; background:rgba(255,106,0,0.08); border-radius:2px; overflow:hidden; }
+  .mini-bar-fill  { height:100%; background:var(--orange); border-radius:2px; transition:width 1.5s ease; }
+  .mini-bar-fill.t { background:var(--teal); }
+  .mini-bar-fill.w { background:#ffb800; }
+
+  /* PIXEL LOGO SVG in sidebar */
+  .cockatoo-icon {
+    display:block; margin:4px auto;
+    filter: drop-shadow(0 0 6px rgba(255,106,0,0.4));
+  }
+
+  .hex-stream {
+    font-size:8px; color:rgba(255,106,0,0.15);
+    letter-spacing:1px; line-height:1.6; word-break:break-all;
+    overflow:hidden; max-height:72px;
+  }
+
+  .waveform { display:flex; align-items:flex-end; gap:2px; height:28px; }
+  .waveform span {
+    flex:1; background:var(--orange); opacity:0.35; border-radius:1px 1px 0 0;
+    animation:wave 1.3s ease-in-out infinite;
+  }
+  @keyframes wave { 0%,100%{height:20%} 50%{height:100%} }
+
+  .service-list { font-size:9px; color:rgba(255,106,0,0.35); line-height:2; }
+  .service-list .loaded { color:var(--teal); }
+
+  /* CENTER */
+  #center { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+
+  /* HERO */
+  #hero {
+    padding:24px 32px 16px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0; opacity:0; animation:fadeIn 0.5s 0.3s forwards;
+  }
+  .hero-eyebrow {
+    font-size:8px; letter-spacing:4px;
+    color:rgba(255,106,0,0.3); margin-bottom:6px;
+  }
+  .hero-title {
+    font-family: var(--display);
+    font-size:52px; font-weight:900;
+    letter-spacing:14px;
+    color:var(--orange);
+    line-height:1;
+    text-shadow: 0 0 30px rgba(255,106,0,0.35), 0 0 60px rgba(255,106,0,0.1);
+    position:relative;
+    animation: glitch 7s 3s infinite;
+  }
+  .hero-title span { color:var(--teal); }
+  .hero-sub  { font-size:9px; letter-spacing:3px; color:rgba(255,106,0,0.3); margin-top:5px; }
+  .hero-tagline {
+    font-family: var(--body);
+    font-size:14px; font-weight:500; letter-spacing:2px;
+    color:rgba(255,154,60,0.6); margin-top:3px;
+  }
+
+  /* PHASES */
+  #phases-bar {
+    display:flex; padding:8px 32px; gap:0;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0; opacity:0; animation:fadeIn 0.4s 0.5s forwards;
+  }
+  .phase {
+    flex:1; text-align:center; font-size:7.5px; letter-spacing:1.5px;
+    color:rgba(255,106,0,0.2); text-transform:uppercase;
+    padding:6px 2px; border-right:1px solid var(--border);
+    transition:color 0.5s;
+  }
+  .phase:last-child { border-right:none; }
+  .phase.active { color:var(--orange2); }
+  .phase.done   { color:var(--teal); }
+  .phase.active::before { content:'▶ '; color:#ffb800; animation:blink .7s infinite; }
+  .phase.done::before   { content:'✓ '; color:var(--teal); }
+
+  /* TERMINAL */
+  #terminal {
+    flex:1; padding:12px 32px; overflow-y:auto; overflow-x:hidden;
+    scroll-behavior:smooth;
+  }
+  #terminal::-webkit-scrollbar { width:2px; }
+  #terminal::-webkit-scrollbar-thumb { background:rgba(255,106,0,0.2); }
+
+  .log-line {
+    font-size:10.5px; line-height:1.9; letter-spacing:0.3px;
+    display:flex; gap:10px; align-items:baseline;
+    opacity:0; transform:translateX(-8px);
+    animation:logSlide 0.2s forwards;
+    white-space:nowrap; overflow:hidden;
+  }
+  .log-ts { color:rgba(255,106,0,0.22); font-size:8px; flex-shrink:0; letter-spacing:1px; }
+  .log-tag {
+    font-size:7.5px; padding:1px 5px; border-radius:1px;
+    flex-shrink:0; letter-spacing:1.5px; font-weight:700;
+  }
+  .tag-sys  { background:rgba(255,106,0,0.12); color:var(--orange2); border:1px solid rgba(255,106,0,0.22); }
+  .tag-ok   { background:rgba(0,212,200,0.1);  color:var(--teal);    border:1px solid rgba(0,212,200,0.2); }
+  .tag-warn { background:rgba(255,184,0,0.1);  color:#ffb800;        border:1px solid rgba(255,184,0,0.2); }
+  .tag-err  { background:rgba(255,60,60,0.1);  color:#ff4444;        border:1px solid rgba(255,60,60,0.2); }
+  .tag-cre  { background:rgba(255,106,0,0.08); color:var(--orange3); border:1px solid rgba(255,154,60,0.25); }
+  .tag-sec  { background:rgba(0,212,200,0.08); color:var(--teal2);   border:1px solid rgba(0,168,158,0.25); }
+  .tag-pix  { background:rgba(255,154,60,0.15);color:#fff0dc;        border:1px solid rgba(255,154,60,0.3); }
+
+  .log-msg { color:rgba(255,235,200,0.7); flex:1; overflow:hidden; text-overflow:ellipsis; }
+  .log-msg .val { color:var(--orange2); }
+  .log-msg .ok  { color:var(--teal); }
+  .log-msg .w   { color:#ffb800; }
+  .log-msg .e   { color:#ff4444; }
+  .log-msg .p   { color:var(--orange3); }
+  .log-msg .c   { color:#fff0dc; }
+
+  /* PROGRESS */
+  #progress-area {
+    padding:9px 32px 12px; border-top:1px solid var(--border);
+    flex-shrink:0; opacity:0; animation:fadeIn 0.3s 0.6s forwards;
+  }
+  .prog-row { display:flex; align-items:center; gap:14px; margin-bottom:7px; }
+  .prog-label { font-size:8px; letter-spacing:2px; color:rgba(255,106,0,0.35); width:130px; flex-shrink:0; }
+  .prog-track {
+    flex:1; height:4px; background:rgba(255,106,0,0.06);
+    border:1px solid rgba(255,106,0,0.1); border-radius:2px; overflow:hidden; position:relative;
+  }
+  .prog-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg, #cc4400, var(--orange), var(--orange2));
+    border-radius:2px; transition:width 0.4s ease; position:relative;
+  }
+  .prog-fill::after {
+    content:''; position:absolute; right:0; top:0; bottom:0; width:5px;
+    background:white; opacity:0.4; border-radius:2px;
+  }
+  .prog-fill.t { background:linear-gradient(90deg, var(--teal2), var(--teal)); }
+  .prog-pct { font-size:9px; color:rgba(255,106,0,0.5); width:36px; text-align:right; flex-shrink:0; }
+
+  /* FINAL BANNER */
+  #status-banner {
+    position:absolute; inset:0; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    opacity:0; pointer-events:none; transition:opacity 1s; z-index:10;
+  }
+  #status-banner.show { opacity:1; pointer-events:all; }
+
+  .banner-bird {
+    width:90px; height:90px;
+    position:relative; display:flex; align-items:center; justify-content:center;
+  }
+
+  .banner-title {
+    font-family:var(--display);
+    font-size:38px; font-weight:900; letter-spacing:10px;
+    color:var(--orange);
+    text-shadow:0 0 30px rgba(255,106,0,0.5);
+    text-align:center;
+  }
+  .banner-sub {
+    font-family:var(--body);
+    font-size:16px; font-weight:500; letter-spacing:3px;
+    color:rgba(255,235,200,0.7); text-align:center;
+  }
+  .banner-tagline {
+    font-size:9px; letter-spacing:4px;
+    color:rgba(255,106,0,0.35); text-align:center;
+  }
+  .banner-greeting {
+    font-family:var(--display);
+    font-size:14px; font-weight:600; letter-spacing:4px;
+    color:var(--teal); margin-top:4px;
+    text-shadow:0 0 14px rgba(0,212,200,0.3);
+  }
+
+  .btn-enter {
+    margin-top:10px; padding:12px 44px;
+    background:transparent; border:1px solid var(--orange);
+    color:var(--orange); font-family:var(--mono);
+    font-size:10px; letter-spacing:4px; text-transform:uppercase;
+    cursor:pointer; position:relative; overflow:hidden; transition:color .3s;
+  }
+  .btn-enter::before {
+    content:''; position:absolute; inset:0;
+    background:var(--orange); transform:scaleX(0);
+    transform-origin:left; transition:transform .3s; z-index:-1;
+  }
+  .btn-enter:hover { color:var(--bg); }
+  .btn-enter:hover::before { transform:scaleX(1); }
+
+  /* BOTTOMBAR */
+  #bottombar {
+    border-top:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 24px; font-size:7.5px; letter-spacing:2px;
+    color:rgba(255,106,0,0.22);
+    background:rgba(10,5,0,0.98); flex-shrink:0;
+    opacity:0; animation:fadeIn 0.3s 0.3s forwards;
+  }
+  #bottombar span { color:rgba(255,106,0,0.38); }
+
+  /* CORNER DECO */
+  .corner-deco {
+    position:fixed; width:24px; height:24px;
+    border-color:rgba(255,106,0,0.2); border-style:solid;
+    opacity:0; animation:fadeIn 0.5s 0.5s forwards;
+  }
+  .corner-deco.tl { top:48px;  left:8px;  border-width:1px 0 0 1px; }
+  .corner-deco.tr { top:48px;  right:8px; border-width:1px 1px 0 0; }
+  .corner-deco.bl { bottom:34px; left:8px;  border-width:0 0 1px 1px; }
+  .corner-deco.br { bottom:34px; right:8px; border-width:0 1px 1px 0; }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn   { to { opacity:1; } }
+  @keyframes slideIn  { to { opacity:1; transform:translateX(0); } }
+  @keyframes logSlide { to { opacity:1; transform:translateX(0); } }
+  @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes glitch {
+    0%,94%,100% { clip-path:none; transform:none; }
+    95% { clip-path:inset(15% 0 65% 0); transform:translateX(-3px); }
+    97% { clip-path:inset(55% 0 15% 0); transform:translateX(3px); }
+    99% { clip-path:none; transform:translateX(1px); }
+  }
+  @keyframes spin { 100%{transform:rotate(360deg)} }
+  @keyframes pulse { 0%,100%{opacity:.6;transform:scale(.95)} 50%{opacity:1;transform:scale(1.05)} }
+
+  .cursor-blink {
+    display:inline-block; width:7px; height:11px;
+    background:var(--orange); vertical-align:middle;
+    margin-left:3px; animation:blink .8s infinite;
+  }
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+<div class="corner-deco tl"></div>
+<div class="corner-deco tr"></div>
+<div class="corner-deco bl"></div>
+<div class="corner-deco br"></div>
+
+<div id="screen">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="topbar-brand">COCKATOO PIXELS — CREATIVE INTELLIGENCE SYSTEM</div>
+    <div class="topbar-pills">
+      <div class="pill pill-o">PIXEL: BOOTING</div>
+      <div class="pill pill-t" id="phase-pill">PHASE 1 OF 8</div>
+      <div class="pill pill-w">KERALA · DELAWARE</div>
+    </div>
+    <div id="live-clock">00:00:00</div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- LEFT SIDEBAR -->
+    <div id="sidebar-left">
+
+      <!-- Cockatoo Pixel Art Bird -->
+      <div style="text-align:center;">
+        <svg class="cockatoo-icon" width="80" height="80" viewBox="0 0 80 80">
+          <!-- Body glow -->
+          <circle cx="40" cy="42" r="22" fill="rgba(255,106,0,0.06)"/>
+          <!-- Spinning ring -->
+          <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,106,0,0.15)" stroke-width="1"
+            stroke-dasharray="226" stroke-dashoffset="56">
+            <animateTransform attributeName="transform" type="rotate" from="0 40 40" to="360 40 40" dur="8s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="40" cy="40" r="28" fill="none" stroke="rgba(0,212,200,0.2)" stroke-width="1"
+            stroke-dasharray="176" stroke-dashoffset="44">
+            <animateTransform attributeName="transform" type="rotate" from="360 40 40" to="0 40 40" dur="12s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Pixel cockatoo body -->
+          <rect x="32" y="36" width="16" height="20" rx="2" fill="#ff6a00" opacity="0.9"/>
+          <!-- Wing -->
+          <rect x="20" y="40" width="12" height="14" rx="2" fill="#ff9a3c" opacity="0.8"/>
+          <rect x="48" y="40" width="12" height="14" rx="2" fill="#ff9a3c" opacity="0.8"/>
+          <!-- Head -->
+          <rect x="30" y="24" width="20" height="16" rx="4" fill="#ff6a00"/>
+          <!-- Crest feathers -->
+          <rect x="34" y="14" width="4" height="10" rx="2" fill="#ffb86c">
+            <animateTransform attributeName="transform" type="rotate" from="-8 36 24" to="8 36 24" dur="2s" repeatCount="indefinite" values="-8 36 24;8 36 24;-8 36 24"/>
+          </rect>
+          <rect x="38" y="11" width="4" height="13" rx="2" fill="#ff9a3c">
+            <animateTransform attributeName="transform" type="rotate" from="-6 40 24" to="6 40 24" dur="2.3s" repeatCount="indefinite" values="-6 40 24;6 40 24;-6 40 24"/>
+          </rect>
+          <rect x="42" y="14" width="4" height="10" rx="2" fill="#ffb86c">
+            <animateTransform attributeName="transform" type="rotate" from="-8 44 24" to="8 44 24" dur="1.9s" repeatCount="indefinite" values="-8 44 24;8 44 24;-8 44 24"/>
+          </rect>
+          <!-- Eye -->
+          <circle cx="38" cy="30" r="3" fill="#fff0dc"/>
+          <circle cx="38" cy="30" r="1.5" fill="#0a0500"/>
+          <!-- Beak -->
+          <rect x="36" y="36" width="8" height="5" rx="1" fill="#cc4400"/>
+          <!-- Tail -->
+          <rect x="34" y="56" width="6" height="10" rx="2" fill="#ff9a3c" transform="rotate(-10 37 56)"/>
+          <rect x="40" y="57" width="6" height="10" rx="2" fill="#ffb86c" transform="rotate(10 43 57)"/>
+          <!-- Teal accent pixels -->
+          <rect x="33" y="44" width="4" height="4" rx="1" fill="rgba(0,212,200,0.6)"/>
+          <rect x="43" y="44" width="4" height="4" rx="1" fill="rgba(0,212,200,0.6)"/>
+        </svg>
+        <div style="font-size:7px;letter-spacing:3px;color:rgba(255,106,0,0.3);margin-top:2px;">COCKATOO CORE</div>
+      </div>
+
+      <div>
+        <div class="sb-label">Creative Output</div>
+        <div class="mini-bar">
+          <div class="mini-bar-label"><span>Brand Power</span><span id="bp-v">--</span></div>
+          <div class="mini-bar-track"><div class="mini-bar-fill" id="bp-b" style="width:0%"></div></div>
+        </div>
+        <div class="mini-bar">
+          <div class="mini-bar-label"><span>Visual Quality</span><span id="vq-v">--</span></div>
+          <div class="mini-bar-track"><div class="mini-bar-fill t" id="vq-b" style="width:0%"></div></div>
+        </div>
+        <div class="mini-bar">
+          <div class="mini-bar-label"><span>Digital Reach</span><span id="dr-v">--</span></div>
+          <div class="mini-bar-track"><div class="mini-bar-fill w" id="dr-b" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Voice Output</div>
+        <div class="waveform">
+          <span style="animation-delay:0s"></span><span style="animation-delay:0.1s"></span>
+          <span style="animation-delay:0.2s"></span><span style="animation-delay:0.3s"></span>
+          <span style="animation-delay:0.15s"></span><span style="animation-delay:0.05s"></span>
+          <span style="animation-delay:0.25s"></span><span style="animation-delay:0.35s"></span>
+        </div>
+        <div class="sb-value" style="font-size:8px;color:rgba(255,106,0,0.3);margin-top:4px;">PIXEL VOICE MODULE<br>SYNTHESIZING</div>
+      </div>
+
+      <div>
+        <div class="sb-label">Data Stream</div>
+        <div class="hex-stream" id="hex-stream">...</div>
+      </div>
+
+    </div>
+
+    <!-- CENTER TERMINAL -->
+    <div id="center">
+      <div id="hero">
+        <div class="hero-eyebrow">// PIXEL — PERSONALISED INTELLIGENCE EXPERIENCE & KNOWLEDGE ENGINE LAYER — INITIALIZING</div>
+        <div class="hero-title">P.I.X.E.L<span>.</span></div>
+        <div class="hero-sub">COCKATOO PIXELS — CREATIVE & DIGITAL INTELLIGENCE SYSTEM v2.0</div>
+        <div class="hero-tagline">Visual Storyteller · Kerala & Delaware · cockatoopixels.com</div>
+      </div>
+
+      <div id="phases-bar">
+        <div class="phase active" id="ph0">System</div>
+        <div class="phase" id="ph1">Creative</div>
+        <div class="phase" id="ph2">Brand</div>
+        <div class="phase" id="ph3">Digital</div>
+        <div class="phase" id="ph4">Content</div>
+        <div class="phase" id="ph5">3D Engine</div>
+        <div class="phase" id="ph6">Network</div>
+        <div class="phase" id="ph7">Online</div>
+      </div>
+
+      <div id="terminal"></div>
+
+      <div id="progress-area">
+        <div class="prog-row">
+          <span class="prog-label">BOOT PROGRESS</span>
+          <div class="prog-track"><div class="prog-fill" id="main-prog"></div></div>
+          <span class="prog-pct" id="main-pct">0%</span>
+        </div>
+        <div class="prog-row">
+          <span class="prog-label">MODULE LOAD</span>
+          <div class="prog-track"><div class="prog-fill t" id="mod-prog"></div></div>
+          <span class="prog-pct" id="mod-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- FINAL BANNER -->
+      <div id="status-banner">
+        <div class="banner-bird">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="42" fill="none" stroke="rgba(255,106,0,0.3)" stroke-width="1">
+              <animateTransform attributeName="transform" type="rotate" from="0 45 45" to="360 45 45" dur="6s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="45" cy="45" r="32" fill="rgba(255,106,0,0.06)"/>
+            <text x="45" y="55" text-anchor="middle" font-size="36" fill="#ff6a00">🦜</text>
+          </svg>
+        </div>
+        <div class="banner-title">P.I.X.E.L. ONLINE</div>
+        <div class="banner-sub">COCKATOO PIXELS — ALL SYSTEMS ACTIVE</div>
+        <div class="banner-greeting" id="banner-greet">GOOD MORNING, CREATIVE TEAM.</div>
+        <div class="banner-tagline">VISUAL STORYTELLER · SPREADING BROAD WINGS IN THE DIGITAL SPACE</div>
+        <button class="btn-enter" onclick="enterWorkspace()">[ ENTER CREATIVE WORKSPACE ]</button>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div id="sidebar-right">
+
+      <div>
+        <div class="sb-label">Active Services</div>
+        <div class="service-list" id="service-list">
+          <div>◻ Website Design</div>
+          <div>◻ Social Media</div>
+          <div>◻ Digital Marketing</div>
+          <div>◻ Logo Design</div>
+          <div>◻ 3D Video Ads</div>
+          <div>◻ Architecture 3D</div>
+          <div>◻ SEO Engine</div>
+          <div>◻ Content Mgmt</div>
+          <div>◻ E-Commerce</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Locations</div>
+        <div class="sb-value" style="font-size:9px; line-height:2;">
+          <div class="ok">● KERALA, INDIA</div>
+          <div style="color:rgba(255,106,0,0.3); font-size:8px; padding-left:10px;">Piravom, Ernakulam</div>
+          <div class="ok" style="margin-top:4px;">● DELAWARE, USA</div>
+          <div style="color:rgba(255,106,0,0.3); font-size:8px; padding-left:10px;">Newark DE 19702</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Session</div>
+        <div class="sb-value">
+          <div class="hi" id="uptime-disp">00:00:00</div>
+          <div style="font-size:8px; margin-top:2px; color:rgba(255,106,0,0.3);">ACTIVE UPTIME</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Contact Ready</div>
+        <div class="sb-value" style="font-size:9px; line-height:2;">
+          <div><span class="ok">✓</span> +91 77364 83777</div>
+          <div><span class="ok">✓</span> +1 302 520245</div>
+          <div><span class="ok">✓</span> cockatoopixels.com</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Threat / Ad Scan</div>
+        <div class="sb-value" style="color:var(--teal); font-size:13px; font-family:var(--display); font-weight:700; letter-spacing:2px; margin:4px 0;">CLEAR</div>
+        <div class="sb-value" style="font-size:8px; color:rgba(255,106,0,0.3);">MARKET SCAN OK<br>COMPETITORS: 4 FLAGGED</div>
+      </div>
+
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- BOTTOMBAR -->
+  <div id="bottombar">
+    <span>© COCKATOO PIXELS PVT LTD — A POWERFUL WAY OF COMMUNICATION IS VISUAL COMMUNICATION</span>
+    <span id="bottom-status">BOOTING P.I.X.E.L.</span>
+    <span>SESSION: <span id="session-id">--</span></span>
+  </div>
+</div>
+
+<script>
+// cursor
+const cur = document.getElementById('cursor');
+const dot = document.getElementById('cursor-dot');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px';
+  dot.style.left = e.clientX+'px'; dot.style.top = e.clientY+'px';
+});
+
+// clock
+function tickClock() {
+  const n = new Date();
+  document.getElementById('live-clock').textContent =
+    String(n.getHours()).padStart(2,'0')+':'+
+    String(n.getMinutes()).padStart(2,'0')+':'+
+    String(n.getSeconds()).padStart(2,'0');
+}
+tickClock(); setInterval(tickClock, 1000);
+
+// uptime
+const t0 = Date.now();
+setInterval(() => {
+  const e = Math.floor((Date.now()-t0)/1000);
+  const h=Math.floor(e/3600), m=Math.floor((e%3600)/60), s=e%60;
+  document.getElementById('uptime-disp').textContent =
+    String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}, 1000);
+
+// session
+document.getElementById('session-id').textContent = Math.random().toString(36).slice(2,10).toUpperCase();
+
+// greeting
+const h0 = new Date().getHours();
+const gw = h0<12?'GOOD MORNING':h0<17?'GOOD AFTERNOON':'GOOD EVENING';
+document.getElementById('banner-greet').textContent = gw+', CREATIVE TEAM.';
+
+// hex
+const hexEl = document.getElementById('hex-stream');
+function rHex(n){let s='';for(let i=0;i<n;i++)s+=Math.floor(Math.random()*16).toString(16);return s;}
+function updateHex(){let l='';for(let i=0;i<5;i++)l+=rHex(20)+'\n';hexEl.textContent=l;}
+updateHex(); setInterval(updateHex, 500);
+
+// diagnostics
+function updateDiag(){
+  const bp=80+Math.floor(Math.random()*18);
+  const vq=85+Math.floor(Math.random()*13);
+  const dr=60+Math.floor(Math.random()*30);
+  document.getElementById('bp-v').textContent=bp+'%';
+  document.getElementById('vq-v').textContent=vq+'%';
+  document.getElementById('dr-v').textContent=dr+'%';
+  document.getElementById('bp-b').style.width=bp+'%';
+  document.getElementById('vq-b').style.width=vq+'%';
+  document.getElementById('dr-b').style.width=dr+'%';
+}
+setTimeout(updateDiag,800); setInterval(updateDiag,3500);
+
+// terminal
+const terminal = document.getElementById('terminal');
+function log(tag, cls, msg, delay) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const n=new Date();
+      const ts=String(n.getHours()).padStart(2,'0')+':'+
+               String(n.getMinutes()).padStart(2,'0')+':'+
+               String(n.getSeconds()).padStart(2,'0')+'.'+
+               String(n.getMilliseconds()).padStart(3,'0');
+      const line=document.createElement('div');
+      line.className='log-line';
+      line.innerHTML=`<span class="log-ts">${ts}</span><span class="log-tag ${cls}">${tag}</span><span class="log-msg">${msg}</span>`;
+      terminal.appendChild(line);
+      terminal.scrollTop=terminal.scrollHeight;
+      res();
+    }, delay);
+  });
+}
+
+function setPhase(i, done) {
+  if(done && i>0) document.getElementById('ph'+(i-1)).className='phase done';
+  if(i<=7) {
+    document.getElementById('ph'+i).className='phase active';
+    document.getElementById('phase-pill').textContent='PHASE '+(i+1)+' OF 8';
+  }
+}
+function setProgress(p1,p2) {
+  document.getElementById('main-prog').style.width=p1+'%';
+  document.getElementById('main-pct').textContent=p1+'%';
+  if(p2!==undefined){document.getElementById('mod-prog').style.width=p2+'%';document.getElementById('mod-pct').textContent=p2+'%';}
+}
+
+const svcEl = document.getElementById('service-list');
+const svcs = ['Website Design','Social Media','Digital Marketing','Logo Design','3D Video Ads','Architecture 3D','SEO Engine','Content Mgmt','E-Commerce'];
+let loadedCount = 0;
+function loadService(name) {
+  loadedCount++;
+  let html='';
+  for(let i=0;i<svcs.length;i++){
+    const done = svcs.slice(0,loadedCount).includes(svcs[i]);
+    html+= done ? `<div class="loaded">◼ ${svcs[i]}</div>` : `<div>◻ ${svcs[i]}</div>`;
+  }
+  svcEl.innerHTML=html;
+}
+
+async function boot() {
+  let t=0;
+  const L=(tag,cls,msg,dt)=>{t+=dt;return log(tag,cls,msg,t);};
+
+  // PHASE 0 — SYSTEM
+  await L('SYS','tag-sys','P.I.X.E.L. v2.0 boot initiated — Cockatoo Pixels Creative OS', 200);
+  await L('SYS','tag-sys','CPU: Pixel Core x16 — <span class="val">Creative Processing Units READY</span>', 280);
+  await L('SYS','tag-sys','RAM: <span class="val">64 GB</span> visual memory allocated', 260);
+  setProgress(5,2);
+  await L('OK','tag-ok','Memory self-test <span class="ok">PASSED</span>', 300);
+  await L('SYS','tag-sys','Storage: NVMe Creative Vault — <span class="val">24 TB</span> brand assets indexed', 280);
+  await L('SYS','tag-sys','Display: 8K holographic canvas interface <span class="ok">READY</span>', 260);
+  setProgress(12,6);
+  await L('OK','tag-ok','System phase complete — handing off to Creative Engine', 280);
+  setPhase(1, false);
+
+  // PHASE 1 — CREATIVE ENGINE
+  setPhase(1,true); setPhase(2,false);
+  await L('CRE','tag-cre','Loading Creative Intelligence modules...', 300);
+  await L('CRE','tag-cre','Graphic design neural net: <span class="p">47,000 templates</span> indexed', 280);
+  await L('CRE','tag-cre','Typography library: <span class="p">2,400 font families</span> loaded', 260);
+  loadService('Website Design');
+  await L('CRE','tag-cre','Color palette engine: <span class="p">Pantone + Hex + RGB</span> cross-linked', 280);
+  await L('CRE','tag-cre','Logo design module: vector workspace <span class="ok">READY</span>', 260);
+  loadService('Logo Design');
+  setProgress(22,16);
+  await L('OK','tag-ok','Creative engine <span class="ok">online</span> — aesthetic intelligence active', 300);
+  setPhase(2,true);
+
+  // PHASE 2 — BRAND
+  setPhase(2,true); setPhase(3,false);
+  await L('CRE','tag-cre','Initializing Brand Intelligence layer...', 280);
+  await L('CRE','tag-cre','Social media poster engine: <span class="p">all platforms calibrated</span>', 280);
+  loadService('Social Media');
+  await L('CRE','tag-cre','Campaign strategy AI: <span class="p">audience targeting models loaded</span>', 280);
+  await L('CRE','tag-cre','Visual storytelling module: <span class="p">Cockatoo narrative DNA</span> loaded', 300);
+  await L('OK','tag-ok','Brand framework: <span class="ok">broad wings configuration ACTIVE</span>', 280);
+  setProgress(34,26);
+  await L('OK','tag-ok','Brand phase complete', 260);
+  setPhase(3,true);
+
+  // PHASE 3 — DIGITAL MARKETING
+  setPhase(3,true); setPhase(4,false);
+  await L('SYS','tag-sys','Digital Marketing suite initializing...', 280);
+  await L('OK','tag-ok','SEO engine: <span class="ok">Google algorithm v4.2 — indexed</span>', 270);
+  loadService('Digital Marketing');
+  loadService('SEO Engine');
+  await L('SYS','tag-sys','PPC module: Google Ads + Meta Ads <span class="ok">LINKED</span>', 270);
+  await L('SYS','tag-sys','Analytics: GA4 + Meta Pixel + Hotjar <span class="ok">ACTIVE</span>', 260);
+  await L('OK','tag-ok','E-commerce integrations: <span class="ok">Shopify · WooCommerce · custom</span>', 270);
+  loadService('E-Commerce');
+  setProgress(48,38);
+  await L('OK','tag-ok','Digital marketing suite <span class="ok">ONLINE</span>', 280);
+  setPhase(4,true);
+
+  // PHASE 4 — CONTENT
+  setPhase(4,true); setPhase(5,false);
+  await L('CRE','tag-cre','Content management system loading...', 280);
+  await L('CRE','tag-cre','Copywriting AI: <span class="p">multilingual — English · Malayalam · Hindi</span>', 280);
+  loadService('Content Mgmt');
+  await L('CRE','tag-cre','Video scripting module: <span class="p">storyboard engine READY</span>', 270);
+  await L('OK','tag-ok','Blog & social content pipeline: <span class="ok">automated scheduling ACTIVE</span>', 270);
+  setProgress(60,50);
+  await L('OK','tag-ok','Content layer <span class="ok">ready</span>', 260);
+  setPhase(5,true);
+
+  // PHASE 5 — 3D ENGINE
+  setPhase(5,true); setPhase(6,false);
+  await L('CRE','tag-cre','3D Rendering engine initializing...', 300);
+  await L('CRE','tag-cre','Advertisement video: <span class="p">Unreal Engine 5 pipeline</span> loaded', 290);
+  loadService('3D Video Ads');
+  await L('CRE','tag-cre','Architecture 3D: <span class="p">photorealistic exterior & interior</span> ready', 280);
+  loadService('Architecture 3D');
+  await L('CRE','tag-cre','Product design 3D rendering: <span class="p">material library</span> indexed', 270);
+  await L('OK','tag-ok','GPU clusters: <span class="ok">96 GB VRAM — rendering farm ONLINE</span>', 280);
+  setProgress(74,64);
+  await L('OK','tag-ok','3D engine <span class="ok">hot</span> — all pipelines active', 270);
+  setPhase(6,true);
+
+  // PHASE 6 — NETWORK
+  setPhase(6,true); setPhase(7,false);
+  await L('SEC','tag-sec','Network & security sweep...', 280);
+  await L('SEC','tag-sec','SSL/TLS certs: <span class="ok">all client domains verified</span>', 260);
+  await L('SEC','tag-sec','CDN: Cloudflare edge — <span class="ok">latency &lt;12ms</span> globally', 270);
+  loadService('Website Design');
+  await L('OK','tag-ok','Website designing platform: <span class="ok">WordPress · Wix · custom — READY</span>', 270);
+  await L('OK','tag-ok','Responsive design engine: <span class="ok">mobile · tablet · desktop</span> calibrated', 260);
+  await L('SEC','tag-sec','Client portals: <span class="ok">encrypted access granted</span>', 260);
+  setProgress(88,78);
+  await L('OK','tag-ok','Network secure — <span class="ok">GLOBAL REACH ACTIVE</span>', 280);
+  setPhase(7,true);
+
+  // PHASE 7 — ONLINE
+  setPhase(7,true);
+  await L('PIX','tag-pix','All Cockatoo Pixels modules loaded — <span class="c">8 of 8 phases complete</span>', 300);
+  await L('PIX','tag-pix','Connecting businesses to customers around the world... <span class="ok">DONE</span>', 280);
+  setProgress(100,100);
+
+  t+=400;
+  setTimeout(()=>{
+    document.getElementById('bottom-status').textContent='P.I.X.E.L. ONLINE';
+    document.getElementById('phase-pill').textContent='ALL SYSTEMS ONLINE';
+    document.getElementById('phase-pill').className='pill pill-t';
+  }, t);
+
+  t+=500;
+  setTimeout(()=>{
+    const n=new Date();
+    const ts=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0')+'.000';
+    const line=document.createElement('div');
+    line.className='log-line';
+    line.innerHTML=`<span class="log-ts">${ts}</span><span class="log-tag tag-pix">PIXEL</span><span class="log-msg"><span class="ok">P.I.X.E.L. is online. ${gw}, creative team. Your brand is ready to spread broad wings.</span> <span class="cursor-blink"></span></span>`;
+    terminal.appendChild(line);
+    terminal.scrollTop=terminal.scrollHeight;
+  }, t);
+
+  t+=1300;
+  setTimeout(()=>{ document.getElementById('status-banner').classList.add('show'); }, t);
+}
+
+function enterWorkspace() {
+  const b=document.getElementById('status-banner');
+  b.style.opacity='0';
+  setTimeout(()=>{
+    b.style.display='none';
+    document.getElementById('bottom-status').textContent='CREATIVE WORKSPACE ACTIVE';
+    const n=new Date();
+    const ts=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0')+'.000';
+    const line=document.createElement('div');
+    line.className='log-line';
+    line.innerHTML=`<span class="log-ts">${ts}</span><span class="log-tag tag-cre">PIXEL</span><span class="log-msg"><span class="p">Creative workspace activated. Let's make your brand spread broad wings today. — Cockatoo Pixels</span></span>`;
+    terminal.appendChild(line);
+    terminal.scrollTop=terminal.scrollHeight;
+  },700);
+}
+
+setTimeout(boot, 800);
+</script>
+</body>
+</html>
